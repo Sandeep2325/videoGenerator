@@ -5,40 +5,41 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 })
 
+console.log(process.env.OPENAI_API_KEY)
+
 export async function POST(request: Request) {
   try {
-    const { topic, duration, style, additionalNotes } = await request.json()
-
-    const prompt = `Create a video script for a ${duration}-second ${style} video about "${topic}". ${
-      additionalNotes ? `Additional requirements: ${additionalNotes}` : ''
-    }
-
-    Format the script as a JSON object with the following structure:
-    {
-      "scenes": [
-        {
-          "sceneNumber": number,
-          "duration": number,
-          "visualDescription": string,
-          "narration": string,
-          "backgroundMusic": string,
-          "transitions": string
-        }
-      ],
-      "totalDuration": number,
-      "voiceStyle": string,
-      "musicStyle": string
-    }`
+    const { topic, duration, style, tone, targetAudience, language, keyPoints, additionalNotes } = await request.json()
 
     const completion = await openai.chat.completions.create({
-      messages: [{ role: 'user', content: prompt }],
-      model: 'gpt-4-turbo-preview',
-      response_format: { type: 'json_object' },
+      messages: [
+        {
+          role: 'system',
+          content: 'You are a professional video script writer. Create engaging and well-structured video scripts.'
+        },
+        {
+          role: 'user',
+          content: `Create a video script with the following parameters:
+          Topic: ${topic}
+          Duration: ${duration} seconds
+          Style: ${style}
+          Tone: ${tone}
+          Target Audience: ${targetAudience}
+          Language: ${language}
+          Key Points: ${keyPoints}
+          Additional Notes: ${additionalNotes || 'None'}
+          
+          Format the script with clear scene markers and dialogue.`
+        }
+      ],
+      model: 'gpt-4o-mini',
+      temperature: 0.7,
+      max_tokens: 1000,
     })
 
-    const script = JSON.parse(completion.choices[0].message.content || '{}')
+    const script = completion.choices[0]?.message?.content || ''
 
-    return NextResponse.json(script)
+    return NextResponse.json({ script })
   } catch (error) {
     console.error('Error generating script:', error)
     return NextResponse.json(
