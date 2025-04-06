@@ -8,8 +8,8 @@ import {
   Textarea,
   SimpleGrid,
   Heading,
+  useToast,
 } from '@chakra-ui/react'
-import { useToast } from '@chakra-ui/toast'
 import { VStack } from '@chakra-ui/layout'
 import {
   FormControl,
@@ -18,6 +18,7 @@ import {
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
+import { useVideoStore } from '@/store/videoStore'
 
 const videoSchema = z.object({
   topic: z.string().min(1, 'Topic is required'),
@@ -35,6 +36,7 @@ type VideoFormData = z.infer<typeof videoSchema>
 export function VideoInputForm() {
   const [isLoading, setIsLoading] = useState(false)
   const toast = useToast()
+  const { setVideoData, updateVideoData } = useVideoStore()
   
   const {
     register,
@@ -47,8 +49,21 @@ export function VideoInputForm() {
   const onSubmit = async (data: VideoFormData) => {
     setIsLoading(true)
     try {
+      // Set initial video data
+      setVideoData({
+        ...data,
+        status: 'generating',
+      })
+
       // TODO: Implement API call to generate script
       console.log('Form submitted:', data)
+      
+      // Update status after successful submission
+      updateVideoData({
+        status: 'completed',
+        script: 'Sample script will be generated here...',
+      })
+
       toast({
         title: 'Script generation started',
         description: 'We are generating your video script. This may take a few moments.',
@@ -57,6 +72,11 @@ export function VideoInputForm() {
         isClosable: true,
       })
     } catch (error) {
+      updateVideoData({
+        status: 'error',
+        error: error instanceof Error ? error.message : 'Unknown error',
+      })
+      
       toast({
         title: 'Error',
         description: `Failed to generate script: ${error instanceof Error ? error.message : 'Unknown error'}`,
