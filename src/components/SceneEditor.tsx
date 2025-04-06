@@ -14,7 +14,7 @@ import {
 } from '@chakra-ui/react'
 import { FaEdit, FaSave, FaTrash, FaSearch, FaVolumeUp } from 'react-icons/fa'
 import { useVideoStore } from '@/store/videoStore'
-
+import {getAudioDurationInSeconds} from '@remotion/media-utils'
 interface Scene {
   sceneNumber: number
   description: string
@@ -23,6 +23,7 @@ interface Scene {
   footageKeywords: string[]
   voiceoverUrl: string
   transcription: string
+  footageUrls: string[]
 }
 
 interface SceneEditorProps {
@@ -71,7 +72,8 @@ export function SceneEditor({ scene, onUpdate, onDelete }: SceneEditorProps) {
       const { keywords, footageUrls } = await response.json()
       onUpdate({
         ...scene,
-        footageKeywords: keywords || []
+        footageKeywords: keywords || [],
+        footageUrls: footageUrls || []
       })
       
       toast({
@@ -108,10 +110,12 @@ export function SceneEditor({ scene, onUpdate, onDelete }: SceneEditorProps) {
       if (!response.ok) throw new Error('Failed to generate voiceover')
       
       const { voiceoverUrl, transcription } = await response.json()
+      const duration = await getAudioDurationInSeconds(voiceoverUrl)*1000
       onUpdate({
         ...scene,
         voiceoverUrl: voiceoverUrl || '',
-        transcription: transcription || ''
+        transcription: transcription || '',
+        duration: duration || scene.duration*1000
       })
       
       toast({

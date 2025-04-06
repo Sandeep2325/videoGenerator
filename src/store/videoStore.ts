@@ -9,6 +9,7 @@ interface ScriptScene {
   footageKeywords: string[]
   voiceoverUrl: string
   transcription: string
+  footageUrls: string[]
 }
 
 interface ScriptResponse {
