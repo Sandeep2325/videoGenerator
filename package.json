@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack",
+    "dev": "next dev --port 3003",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"
@@ -26,6 +26,7 @@
     "@radix-ui/react-toast": "^1.2.6",
     "@remotion/cli": "^4.0.286",
     "@remotion/player": "^4.0.286",
+    "@remotion/transitions": "^4.0.286",
     "@shadcn/ui": "^0.0.4",
     "@types/uuid": "^10.0.0",
     "axios": "^1.8.4",

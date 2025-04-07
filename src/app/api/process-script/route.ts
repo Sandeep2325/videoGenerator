@@ -86,9 +86,10 @@ export async function POST(request: Request) {
       })
     }
 
-    // Process each scene (only if we have an edited script)
-    const processedScenes = await Promise.all(
-      scenes.map(async (scene) => {
+    // Process scenes sequentially to avoid memory issues
+    const processedScenes = []
+    for (const scene of scenes) {
+      try {
         // Search for relevant stock footage using Pexels API
         const footageResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/search-footage`, {
           method: 'POST',
@@ -111,13 +112,17 @@ export async function POST(request: Request) {
         // Generate voiceover
         const voiceoverUrl = await generateVoiceover(scene.dialogue)
 
-        return {
+        processedScenes.push({
           ...scene,
           footageUrls,
           voiceoverUrl,
-        }
-      })
-    )
+        })
+      } catch (error) {
+        console.error(`Error processing scene ${scene.sceneNumber}:`, error)
+        // Continue with other scenes even if one fails
+        processedScenes.push(scene)
+      }
+    }
 
     return NextResponse.json({ 
       script,
@@ -125,9 +130,9 @@ export async function POST(request: Request) {
       status: 'completed'
     })
   } catch (error) {
-    console.error('Error processing video:', error)
+    console.error('Error processing script:', error)
     return NextResponse.json(
-      { error: 'Failed to process video' },
+      { error: 'Failed to process script' },
       { status: 500 }
     )
   }

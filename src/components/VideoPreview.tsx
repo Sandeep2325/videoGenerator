@@ -13,11 +13,22 @@ import {
 import { MyVideo } from './MyVideo'
 
 interface VideoPreviewProps {
-  script: any // Replace with proper type
-  onRegenerate: () => void
+  script: {
+    scenes: {
+      sceneNumber: number;
+      duration: number;
+      visualDescription: string;
+      narration: string;
+      backgroundMusic: string;
+      transitions: string;
+    }[];
+    totalDuration: number;
+    voiceStyle: string;
+    musicStyle: string;
+  }
 }
 
-export function VideoPreview({ script, onRegenerate }: VideoPreviewProps) {
+export function VideoPreview({ script }: VideoPreviewProps) {
   const [isGenerating, setIsGenerating] = useState(false)
   const [progress, setProgress] = useState(0)
   const toast = useToast()
@@ -51,7 +62,7 @@ export function VideoPreview({ script, onRegenerate }: VideoPreviewProps) {
     } catch (error) {
       toast({
         title: 'Error',
-        description: 'Failed to generate video',
+        description: error instanceof Error ? error.message : 'Failed to generate video',
         status: 'error',
         duration: 5000,
         isClosable: true,

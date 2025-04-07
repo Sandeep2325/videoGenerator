@@ -41,6 +41,7 @@ interface ScriptScene {
   footageKeywords: string[]
   voiceoverUrl: string
   transcription: string
+  footageUrls: string[]
 }
 
 const videoSchema = z.object({
@@ -106,7 +107,8 @@ export function VideoInputForm() {
         duration: 0,
         footageKeywords: [],
         voiceoverUrl: '',
-        transcription: ''
+        transcription: '',
+        footageUrls: []
       }
     ])
   }
