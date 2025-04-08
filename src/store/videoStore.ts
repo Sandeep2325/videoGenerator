@@ -18,20 +18,23 @@ interface ScriptResponse {
 
 export interface VideoData {
   topic: string
-  duration: string
+  duration: number
   style: string
   tone: string
   targetAudience: string
   language: string
-  keyPoints: string
-  additionalNotes?: string
+  keyPoints: string[]
+  additionalNotes: string
+  orientation: '9:16' | '16:9' | '1:1'
   status: 'idle' | 'generating' | 'completed' | 'error'
   error?: string
   script?: {
     scenes: ScriptScene[]
+    totalDuration: number
+    voiceStyle: string
+    musicStyle: string
   }
   processedScenes?: ScriptScene[]
-  orientation: '9:16' | '16:9' | '1:1'
 }
 
 interface VideoStore {

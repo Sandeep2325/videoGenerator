@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, lazy, Suspense } from 'react'
 import {
   Box,
   Button,
@@ -30,7 +30,9 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
 import { useVideoStore } from '@/store/videoStore'
-import { SceneEditor } from './SceneEditor'
+import { ErrorBoundary } from './ErrorBoundary'
+import { PerformanceMonitor } from '@/utils/performanceMonitor'
+import { SceneProcessor } from '@/utils/sceneProcessor'
 import { FaPlus, FaMobile, FaDesktop, FaSquare } from 'react-icons/fa'
 
 interface ScriptScene {
@@ -57,6 +59,13 @@ const videoSchema = z.object({
 })
 
 type VideoFormData = z.infer<typeof videoSchema>
+
+// Lazy load heavy components
+const SceneEditor = lazy(() => import('./SceneEditor').then(mod => ({ default: mod.SceneEditor })))
+const VideoPreview = lazy(() => import('./VideoPreview').then(mod => ({ default: mod.VideoPreview })))
+
+const monitor = PerformanceMonitor.getInstance()
+const sceneProcessor = new SceneProcessor()
 
 export function VideoInputForm() {
   const [isLoading, setIsLoading] = useState(false)
@@ -114,45 +123,35 @@ export function VideoInputForm() {
   }
 
   const onSubmit = async (data: VideoFormData) => {
+    monitor.startOperation('formSubmit')
     setIsLoading(true)
-    setProcessingProgress({
-      current: 0,
-      total: 3,
-      message: 'Generating script...'
-    })
+    
     try {
-      // Set initial video data
       setVideoData({
         ...data,
+        duration: Number(data.duration),
+        keyPoints: data.keyPoints.split(',').map(point => point.trim()),
         status: 'generating',
         orientation: data.orientation
       })
 
-      // First step: Generate script
       const response = await fetch('/api/process-script', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       })
 
-      if (!response.ok) {
-        throw new Error('Failed to generate script')
-      }
+      if (!response.ok) throw new Error('Failed to generate script')
 
       const { script, status } = await response.json()
       
       if (status === 'script_generated') {
+        // Process scenes in batches
+        script.scenes.forEach(scene => sceneProcessor.addToQueue(scene))
+        
         setScenes(script.scenes)
         setCurrentStep('edit')
-        setProcessingProgress(prev => ({
-          ...prev,
-          current: 1,
-          message: 'Script generated. Edit your scenes...'
-        }))
         onOpen()
-        return
       }
     } catch (error) {
       updateVideoData({
@@ -169,11 +168,12 @@ export function VideoInputForm() {
       })
     } finally {
       setIsLoading(false)
+      monitor.endOperation('formSubmit')
     }
   }
 
   return (
-    <>
+    <ErrorBoundary>
       <Box 
         as="form" 
         onSubmit={handleSubmit(onSubmit)}
@@ -375,20 +375,17 @@ export function VideoInputForm() {
           <ModalHeader>Edit Your Script</ModalHeader>
           <ModalBody>
             <VStack spacing={6} align="stretch">
-              {scenes.map(scene => (
-                <SceneEditor
-                  key={scene.sceneNumber}
-                  scene={scene}
-                  onUpdate={(updatedScene) => handleSceneUpdate(scene.sceneNumber, updatedScene)}
-                  onDelete={() => handleSceneDelete(scene.sceneNumber)}
-                />
-              ))}
-              <Button
-                onClick={handleAddScene}
-                colorScheme="blue"
-                variant="outline"
-                leftIcon={<FaPlus />}
-              >
+              <Suspense fallback={<div>Loading editor...</div>}>
+                {scenes.map((scene: ScriptScene) => (
+                  <SceneEditor
+                    key={scene.sceneNumber}
+                    scene={scene}
+                    onUpdate={(updatedScene: ScriptScene) => handleSceneUpdate(scene.sceneNumber, updatedScene)}
+                    onDelete={() => handleSceneDelete(scene.sceneNumber)}
+                  />
+                ))}
+              </Suspense>
+              <Button onClick={handleAddScene} colorScheme="blue" variant="outline" leftIcon={<FaPlus />}>
                 Add New Scene
               </Button>
             </VStack>
@@ -402,7 +399,12 @@ export function VideoInputForm() {
               onClick={() => {
                 updateVideoData({
                   status: 'completed',
-                  script: { scenes },
+                  script: { 
+                    scenes,
+                    totalDuration: scenes.reduce((acc, scene) => acc + scene.duration, 0),
+                    voiceStyle: 'default',
+                    musicStyle: 'default'
+                  },
                   processedScenes: scenes
                 })
                 onClose()
@@ -424,6 +426,6 @@ export function VideoInputForm() {
           />
         </Box>
       )}
-    </>
+    </ErrorBoundary>
   )
 } 
